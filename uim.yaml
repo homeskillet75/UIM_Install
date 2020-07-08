@@ -1,0 +1,74 @@
+--- # Install UIM robot for Fedora based Linux
+- hosts: all
+  become: yes
+  
+  tasks:
+  - name: Create a directory /tmp/uiminstall
+    file:
+      path: /tmp/uiminstall
+      state: directory
+      mode: 0755
+      owner: root
+      group: root
+  
+  - name: Download UIM rpm
+    get_url:
+      url: http://sa1x-spacewalk-p1/pub/uim/nimsoft-robot.x86_64.rpm
+      dest: /tmp/uiminstall
+      mode: 0755
+      owner: root
+      group: root
+      
+  - name: Download answer file
+    get_url:
+      url: http://sa1x-spacewalk-p1/pub/uim/nms-robot-vars.cfg
+      dest: /tmp/uiminstall
+      mode: 0755
+      owner: root
+      group: root
+      
+  - name: Stop agent if already running
+    service:
+      name: nimbus
+      state: stopped
+    ignore_errors: yes
+      
+  - name: Uninstall any previous installs
+    yum:
+      name: nimsoft-robot.x86_64
+      state: absent
+
+  - name: Remove any old .conf files
+    file:
+      name: /etc/nimbus.conf
+      state: absent
+      
+  - name: Copy answer file to /opt
+    copy:
+      src: /tmp/uiminstall/nms-robot-vars.cfg
+      dest: /opt/
+      remote_src: yes
+
+  - name: Copy rpm to /opt
+    copy:
+      src: /tmp/uiminstall/nimsoft-robot.x86_64.rpm
+      dest: /opt/
+      remote_src: yes
+      
+  - name: Install nimsoft rpm
+    yum:
+      name: /opt/nimsoft-robot.x86_64.rpm
+      state: present
+
+  - name: Run robot install script
+    command: /opt/nimsoft/install/RobotConfigurer.sh
+      
+  - name: Start the nimbus service
+    service:
+      name: nimbus
+      state: started
+      
+  - name: Cleanup /tmp/uiminstall directory
+    file:
+      path: /tmp/uiminstall
+      state: absent
